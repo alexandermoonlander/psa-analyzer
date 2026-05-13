@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PSA Grade Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060f;--surface:#0c0c1a;--card:#111122;--card2:#161628;
+  --border:#1e1e38;--border2:#262645;--accent:#f0b429;
+  --green:#00d68e;--amber:#f0b429;--red:#ff4d6d;
+  --text:#e4e4f0;--muted:#6666a0;--dim:#3a3a60;
+  --syne:'Syne',sans-serif;--mono:'DM Mono',monospace;
+}
+html{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100%}
+body{min-height:100vh;display:flex;flex-direction:column}
+header{padding:18px 28px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:var(--syne);font-weight:800;font-size:16px;letter-spacing:.2em;color:var(--accent);display:flex;align-items:center;gap:10px;}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:blink 2.5s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.logo-wrap{display:flex;flex-direction:column;gap:1px;}
+.logo-sub{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.12em;margin-top:2px;}
+.header-tag{font-size:9px;letter-spacing:.14em;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:4px 10px;}
+.shell{flex:1;display:grid;grid-template-columns:300px 1fr;max-width:1120px;margin:0 auto;width:100%;padding:28px 20px;gap:20px;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:18px;height:fit-content;}
+.panel-title{font-family:var(--syne);font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.field{display:flex;flex-direction:column;gap:7px;}
+.field label{font-size:10px;color:var(--muted);letter-spacing:.1em;}
+.field input{background:var(--card);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:9px 12px;border-radius:8px;outline:none;transition:border-color .2s;width:100%;-webkit-appearance:none;}
+.field input:focus{border-color:var(--accent);}
+.cert-badge{margin-top:4px;font-size:10px;display:none;align-items:center;gap:6px;}
+.cert-badge a{color:var(--accent);text-decoration:none;}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--bg);border-radius:8px;border:1px solid var(--border);}
+.tab{flex:1;padding:7px 8px;border:none;border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--muted);background:transparent;cursor:pointer;transition:all .15s;}
+.tab.active{background:var(--card2);color:var(--text);border:1px solid var(--border2);}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .2s;}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:rgba(240,180,41,.04);}
+.drop-zone .icon{font-size:28px;margin-bottom:8px;}
+.drop-zone p{font-size:11px;color:var(--muted);line-height:1.6;}
+.drop-zone span{color:var(--accent);}
+.previews{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.preview-wrap{position:relative;display:inline-block;}
+.preview-img{width:64px;height:64px;object-fit:cover;border-radius:7px;border:1px solid var(--border2);}
+.remove-btn{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#analyze-btn{width:100%;padding:13px;border:none;border-radius:9px;background:var(--accent);color:#06060f;font-family:var(--syne);font-size:13px;font-weight:800;letter-spacing:.16em;cursor:pointer;-webkit-appearance:none;}
+#analyze-btn:disabled{opacity:.4;cursor:not-allowed;}
+.hint-text{font-size:10px;color:var(--dim);line-height:1.6;}
+.hint-text a{color:var(--accent);text-decoration:none;}
+.right-panel{display:flex;flex-direction:column;gap:16px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface);min-height:360px;}
+.empty-icon{font-size:40px;}
+.empty-state h3{font-family:var(--syne);font-size:14px;font-weight:700;color:var(--muted);}
+.empty-state p{font-size:11px;color:var(--dim);text-align:center;max-width:240px;line-height:1.7;}
+.centering-block{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:fadeUp .35s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.centering-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.centering-title{font-family:var(--syne);font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--muted);}
+.centering-badges{display:flex;gap:8px;}
+.cb{font-size:11px;font-family:var(--mono);font-weight:500;padding:4px 12px;border-radius:4px;}
+.cb-good{background:rgba(0,214,142,.12);color:var(--green);border:1px solid rgba(0,214,142,.2);}
+.cb-warn{background:rgba(240,180,41,.12);color:var(--amber);border:1px solid rgba(240,180,41,.2);}
+.cb-bad{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.2);}
+.img-wrap{position:relative;line-height:0;background:#000;}
+.img-wrap img{width:100%;height:auto;display:block;max-height:500px;object-fit:contain;}
+.img-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+.result-card{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;animation:fadeUp .35s ease both;}
+.result-top{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.verdict-badge{font-family:var(--syne);font-size:10px;font-weight:700;letter-spacing:.14em;padding:5px 12px;border-radius:5px;flex-shrink:0;}
+.verdict-crack{background:rgba(0,214,142,.12);color:var(--green);border:1px solid rgba(0,214,142,.25);}
+.verdict-hold{background:rgba(240,180,41,.12);color:var(--amber);border:1px solid rgba(240,180,41,.25);}
+.verdict-pass{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.25);}
+.verdict-none{background:rgba(102,102,160,.12);color:var(--muted);border:1px solid var(--border2);}
+.score-section{flex:1;}
+.score-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.score-label{font-size:11px;color:var(--muted);}
+.score-num{font-family:var(--syne);font-size:20px;font-weight:800;}
+.score-num.hi{color:var(--green);}.score-num.mid{color:var(--amber);}.score-num.lo{color:var(--red);}
+.score-track{height:4px;background:var(--card);border-radius:2px;overflow:hidden;}
+.score-fill{height:100%;border-radius:2px;transition:width .6s .1s;}
+.fill-hi{background:var(--green);}.fill-mid{background:var(--amber);}.fill-lo{background:var(--red);}
+.result-body{padding:18px 22px;display:flex;flex-direction:column;gap:14px;}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+.metric-label{font-size:9px;color:var(--dim);letter-spacing:.1em;margin-bottom:4px;}
+.metric-val{font-size:13px;font-weight:500;color:var(--text);}
+.metric-val.good{color:var(--green);}.metric-val.warn{color:var(--amber);}.metric-val.bad{color:var(--red);}
+.detail-row{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.detail-item{display:flex;flex-direction:column;gap:3px;}
+.detail-label{font-size:9px;color:var(--dim);letter-spacing:.08em;}
+.detail-val{font-size:12px;color:var(--text);}
+.notes-block{font-size:11px;color:var(--muted);line-height:1.7;padding:12px 14px;border-radius:9px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border2);}
+.notes-block.flaw{border-left-color:var(--amber);}
+.action-row{display:flex;gap:8px;}
+.action-btn{flex:1;padding:9px 12px;border-radius:8px;font-family:var(--mono);font-size:11px;text-align:center;text-decoration:none;border:1px solid var(--border2);color:var(--muted);background:var(--card);cursor:pointer;display:block;-webkit-appearance:none;}
+.action-btn.disabled{opacity:.3;pointer-events:none;}
+.action-btn.primary{background:rgba(240,180,41,.08);border-color:rgba(240,180,41,.3);color:var(--accent);}
+.loading-card{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-height:200px;justify-content:center;}
+.spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:12px;color:var(--muted);letter-spacing:.08em;}
+.error-card{border:1px solid rgba(255,77,109,.25);border-radius:14px;background:rgba(255,77,109,.06);padding:20px 24px;font-size:12px;color:var(--red);line-height:1.6;}
+footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top:1px solid var(--border);}
+@media(max-width:720px){
+  header{padding:14px 16px;}
+  .header-tag{display:none;}
+  .shell{grid-template-columns:1fr;padding:12px;gap:12px;}
+  .panel{padding:16px;}
+  .metrics-grid{grid-template-columns:repeat(2,1fr);}
+  .detail-row{grid-template-columns:1fr;}
+  .action-row{flex-direction:column;}
+  .result-top{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-wrap">
+      <div>PSA GRADE ANALYZER</div>
+      <div class="logo-sub">9 → 10 UPGRADE ASSESSMENT</div>
+    </div>
+  </div>
+  <div class="header-tag">CLAUDE VISION</div>
+</header>
+
+<div class="shell">
+  <div class="panel">
+    <div class="panel-title">Card Details</div>
+    <div class="field">
+      <label>PSA CERT NUMBER</label>
+      <input type="text" id="cert" placeholder="e.g. 12345678" maxlength="10" oninput="onCertInput()" inputmode="numeric" autocomplete="off">
+      <div class="cert-badge" id="cert-badge">
+        <a id="cert-link" href="#" target="_blank">View on PSA ↗</a>
+      </div>
+    </div>
+
+    <div class="panel-title" style="padding-top:2px">Card Images</div>
+    <div class="tabs">
+      <button class="tab active" id="tab-url" onclick="setMode('url')">Paste URLs</button>
+      <button class="tab" id="tab-upload" onclick="setMode('upload')">Upload Files</button>
+    </div>
+
+    <div id="url-mode">
+      <div class="field" style="margin-bottom:10px">
+        <label>FRONT IMAGE URL</label>
+        <input type="text" id="front-url" placeholder="Paste image URL here" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>BACK IMAGE URL</label>
+        <input type="text" id="back-url" placeholder="Paste image URL here" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="hint-text">Go to <a href="https://www.psacard.com/cert" target="_blank">psacard.com/cert</a>, look up the cert, then long-press each image → Copy Image Address</div>
+    </div>
+
+    <div id="upload-mode" style="display:none">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+        <div class="icon">📤</div>
+        <p>Tap to choose front + back images<br>or <span>drag &amp; drop</span></p>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="onFiles(this.files)">
+      <div class="previews" id="previews"></div>
+    </div>
+
+    <button id="analyze-btn" onclick="analyze()">ANALYZE CARD</button>
+  </div>
+
+  <div class="right-panel" id="right-panel">
+    <div class="empty-state">
+      <div class="empty-icon">🃏</div>
+      <h3>No card analyzed yet</h3>
+      <p>Enter a PSA cert number, add front and back images, and hit Analyze to get your upgrade assessment.</p>
+    </div>
+  </div>
+</div>
+
+<footer>PSA GRADE ANALYZER · FOR RESEARCH PURPOSES ONLY · NOT AFFILIATED WITH PSA</footer>
+
+<script>
+let mode='url', uploads=[], frontSrc=null;
+
+function setMode(m){
+  mode=m;
+  document.getElementById('tab-url').classList.toggle('active',m==='url');
+  document.getElementById('tab-upload').classList.toggle('active',m==='upload');
+  document.getElementById('url-mode').style.display=m==='url'?'block':'none';
+  document.getElementById('upload-mode').style.display=m==='upload'?'block':'none';
+}
+function onCertInput(){
+  const v=document.getElementById('cert').value.trim();
+  const b=document.getElementById('cert-badge'),l=document.getElementById('cert-link');
+  if(v.length>=6){b.style.display='flex';l.href='https://www.psacard.com/cert/'+v;}
+  else b.style.display='none';
+}
+function onDrag(e,over){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',over);}
+function onDrop(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');onFiles(e.dataTransfer.files);}
+function onFiles(files){
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/'))return;
+    const r=new FileReader();
+    r.onload=ev=>{uploads.push({data:ev.target.result,type:f.type});renderPreviews();};
+    r.readAsDataURL(f);
+  });
+}
+function renderPreviews(){
+  document.getElementById('previews').innerHTML=uploads.map((u,i)=>`
+    <div class="preview-wrap">
+      <img src="${u.data}" class="preview-img">
+      <button class="remove-btn" onclick="uploads.splice(${i},1);renderPreviews()">×</button>
+    </div>`).join('');
+}
+
+function buildSVG(bp,lr,tb){
+  const {left_end:lx,right_start:rx,top_end:ty,bottom_start:by}=bp;
+  const [lp,rp]=(lr||'50/50').split('/').map(Number);
+  const [tp,bp2]=(tb||'50/50').split('/').map(Number);
+  const col='#ff3355',bg='rgba(0,0,0,0.7)',lw=0.45,fs=3.6,px=1.4,py=0.8;
+  const mx=(lx+rx)/2,my=(ty+by)/2;
+  function L(t,x,y){
+    const w=t.length*fs*0.6+px*2,h=fs+py*2;
+    return `<rect x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="0.8" fill="${bg}"/>
+<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="${fs}" font-weight="bold" fill="white">${t}</text>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+<line x1="${lx}" y1="0" x2="${lx}" y2="100" stroke="${col}" stroke-width="${lw}"/>
+<line x1="${rx}" y1="0" x2="${rx}" y2="100" stroke="${col}" stroke-width="${lw}"/>
+<line x1="0" y1="${ty}" x2="100" y2="${ty}" stroke="${col}" stroke-width="${lw}"/>
+<line x1="0" y1="${by}" x2="100" y2="${by}" stroke="${col}" stroke-width="${lw}"/>
+<circle cx="${lx}" cy="${ty}" r="0.9" fill="${col}"/>
+<circle cx="${rx}" cy="${ty}" r="0.9" fill="${col}"/>
+<circle cx="${lx}" cy="${by}" r="0.9" fill="${col}"/>
+<circle cx="${rx}" cy="${by}" r="0.9" fill="${col}"/>
+${L(lp.toFixed(1)+'%',lx/2,my)}
+${L(rp.toFixed(1)+'%',(rx+100)/2,my)}
+${L(tp.toFixed(1)+'%',mx,ty/2)}
+${L(bp2.toFixed(1)+'%',mx,(by+100)/2)}
+</svg>`;
+}
+
+function computeScore(a){
+  let s=50;
+  s+=({excellent:35,good:15,marginal:-10,unlikely:-35}[a.upgrade_potential]||0);
+  s+=({excellent:15,good:8,marginal:-5,poor:-20}[a.centering_grade]||0);
+  s+=({none:15,trace:10,minimal:4,moderate:-15,heavy:-35}[a.corner_whitening]||0);
+  s+=({pristine:10,minimal_wear:3,moderate_wear:-12,heavy_wear:-25}[a.edge_condition]||0);
+  s+=({pristine:5,minor:0,moderate:-10,significant:-20}[a.surface_front]||0);
+  s+=({pristine:5,minor:0,moderate:-10,significant:-20}[a.surface_back]||0);
+  s+=({high:0,medium:-5,low:-12}[a.confidence]||0);
+  return Math.max(0,Math.min(100,s));
+}
+function gc(v,g,w){return g.includes(v)?'good':w.includes(v)?'warn':'bad';}
+function cbCls(lr){
+  const l=parseFloat((lr||'50/50').split('/')[0]);
+  return l>=40&&l<=60?'cb-good':l>=37&&l<=63?'cb-warn':'cb-bad';
+}
+
+async function analyze(){
+  const cert=document.getElementById('cert').value.trim();
+  const btn=document.getElementById('analyze-btn');
+  frontSrc=null;
+  let imgs=[];
+
+  if(mode==='url'){
+    const f=document.getElementById('front-url').value.trim();
+    const b=document.getElementById('back-url').value.trim();
+    if(!f&&!b){showError('Please paste at least one image URL.');return;}
+    if(f){imgs.push({type:'image',source:{type:'url',url:f}});frontSrc=f;}
+    if(b)imgs.push({type:'image',source:{type:'url',url:b}});
+  }else{
+    if(!uploads.length){showError('Please upload at least one image.');return;}
+    frontSrc=uploads[0].data;
+    for(const u of uploads.slice(0,3))
+      imgs.push({type:'image',source:{type:'base64',media_type:u.type,data:u.data.split(',')[1]}});
+  }
+
+  btn.disabled=true;btn.textContent='ANALYZING…';
+  document.getElementById('right-panel').innerHTML=
+    '<div class="loading-card"><div class="spinner"></div><div class="loading-text">CLAUDE VISION EXAMINING CARD…</div></div>';
+
+  const prompt=`You are a world-class Pokemon card grader. Analyze this PSA 9 card for PSA 10 upgrade potential.
+PSA 10: centering 60/40 or better L/R and T/B, zero corner whitening, no edge nicks, pristine surface.
+For border_positions: estimate as % of full image (0-100) where each card border edge sits. Be precise.
+Return ONLY valid JSON:
+{"centering_lr":"54/46","centering_tb":"55/45","centering_grade":"excellent|good|marginal|poor","corner_whitening":"none|trace|minimal|moderate|heavy","edge_condition":"pristine|minimal_wear|moderate_wear|heavy_wear","surface_front":"pristine|minor|moderate|significant","surface_back":"pristine|minor|moderate|significant","upgrade_potential":"excellent|good|marginal|unlikely","confidence":"high|medium|low","primary_flaw":"main issue or none apparent","recommended_action":"crack and resubmit|hold|pass","notes":"3 sentences: centering, corners/edges, overall recommendation","border_positions":{"left_end":12,"right_start":88,"top_end":8,"bottom_start":92}}`;
+
+  try{
+    const resp=await fetch('/api/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:[...imgs,{type:'text',text:prompt}]}]
+      })
+    });
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error?.message||'API error '+resp.status);
+    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
+    const s=raw.indexOf('{'),e=raw.lastIndexOf('}')+1;
+    showResult(JSON.parse(raw.slice(s,e)),cert);
+  }catch(err){showError(err.message);}
+  finally{btn.disabled=false;btn.textContent='ANALYZE CARD';}
+}
+
+function showResult(a,cert){
+  const score=computeScore(a),sc=score>=65?'hi':score>=40?'mid':'lo';
+  const action=(a.recommended_action||'').toLowerCase();
+  const vCls=action.includes('crack')?'verdict-crack':action.includes('hold')?'verdict-hold':action.includes('pass')?'verdict-pass':'verdict-none';
+  const vTxt=action.includes('crack')?'CRACK &amp; RESUBMIT':action.includes('hold')?'HOLD':action.includes('pass')?'PASS':'INCONCLUSIVE';
+  const hasFlaw=a.primary_flaw&&a.primary_flaw.toLowerCase()!=='none apparent';
+  const psaUrl=cert?'https://www.psacard.com/cert/'+cert:null;
+  const bp=a.border_positions||{left_end:12,right_start:88,top_end:8,bottom_start:92};
+  const ctrCls=gc(a.centering_grade,['excellent','good'],['marginal']);
+  const cCls=gc(a.corner_whitening,['none','trace'],['minimal']);
+  const eCls=gc(a.edge_condition,['pristine'],['minimal_wear']);
+  const uCls=gc(a.upgrade_potential,['excellent','good'],['marginal']);
+
+  const imgBlock=frontSrc
+    ?`<div class="img-wrap"><img src="${frontSrc}" alt="Card front" onerror="this.style.display='none'">${buildSVG(bp,a.centering_lr,a.centering_tb)}</div>`
+    :`<div style="padding:16px;font-size:11px;color:var(--muted);text-align:center;background:var(--card)">Upload the front image to see centering overlay</div>`;
+
+  document.getElementById('right-panel').innerHTML=`
+    <div class="centering-block">
+      <div class="centering-header">
+        <div class="centering-title">CENTERING ANALYSIS</div>
+        <div class="centering-badges">
+          <span class="cb ${cbCls(a.centering_lr)}">L/R ${a.centering_lr||'?'}</span>
+          <span class="cb ${cbCls(a.centering_tb)}">T/B ${a.centering_tb||'?'}</span>
+        </div>
+      </div>
+      ${imgBlock}
+    </div>
+    <div class="result-card">
+      <div class="result-top">
+        <div class="score-section">
+          <div class="score-label-row">
+            <span class="score-label">UPGRADE SCORE</span>
+            <span class="score-num ${sc}">${score}<span style="font-size:13px;opacity:.5">/100</span></span>
+          </div>
+          <div class="score-track"><div class="score-fill fill-${sc}" style="width:${score}%"></div></div>
+        </div>
+        <div class="verdict-badge ${vCls}">${vTxt}</div>
+      </div>
+      <div class="result-body">
+        <div class="metrics-grid">
+          <div class="metric"><div class="metric-label">CENTERING L/R</div><div class="metric-val ${ctrCls}">${a.centering_lr||'—'}</div></div>
+          <div class="metric"><div class="metric-label">CENTERING T/B</div><div class="metric-val ${ctrCls}">${a.centering_tb||'—'}</div></div>
+          <div class="metric"><div class="metric-label">CORNERS</div><div class="metric-val ${cCls}">${a.corner_whitening||'—'}</div></div>
+          <div class="metric"><div class="metric-label">EDGES</div><div class="metric-val ${eCls}">${a.edge_condition||'—'}</div></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-item"><div class="detail-label">SURFACE FRONT</div><div class="detail-val">${a.surface_front||'—'}</div></div>
+          <div class="detail-item"><div class="detail-label">SURFACE BACK</div><div class="detail-val">${a.surface_back||'—'}</div></div>
+          <div class="detail-item"><div class="detail-label">UPGRADE POTENTIAL</div><div class="detail-val ${uCls}">${a.upgrade_potential||'—'}</div></div>
+          <div class="detail-item"><div class="detail-label">CONFIDENCE</div><div class="detail-val">${a.confidence||'—'}</div></div>
+        </div>
+        ${hasFlaw?'<div class="notes-block flaw">⚠ '+a.primary_flaw+'</div>':''}
+        ${a.notes?'<div class="notes-block">'+a.notes+'</div>':''}
+        <div class="action-row">
+          <a class="action-btn primary${psaUrl?'':' disabled'}" href="${psaUrl||'#'}" target="_blank">↗ PSA Cert</a>
+          <a class="action-btn" href="https://130point.com/sales/" target="_blank">↗ 130point</a>
+          <button class="action-btn" onclick="resetUI()">Clear</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function resetUI(){
+  uploads=[];frontSrc=null;
+  document.getElementById('right-panel').innerHTML=
+    '<div class="empty-state"><div class="empty-icon">🃏</div><h3>No card analyzed yet</h3><p>Add images and hit Analyze.</p></div>';
+}
+function showError(msg){
+  document.getElementById('right-panel').innerHTML='<div class="error-card">⚠ '+msg+'</div>';
+  document.getElementById('analyze-btn').disabled=false;
+  document.getElementById('analyze-btn').textContent='ANALYZE CARD';
+}
+</script>
+</body>
+</html>
