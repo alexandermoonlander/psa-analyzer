@@ -64,7 +64,7 @@ header{padding:18px 28px;border-bottom:1px solid var(--border);background:var(--
 .cb-warn{background:rgba(240,180,41,.12);color:var(--amber);border:1px solid rgba(240,180,41,.2);}
 .cb-bad{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.2);}
 .img-wrap{position:relative;line-height:0;background:#000;}
-.img-wrap img{width:100%;height:auto;display:block;max-height:500px;object-fit:contain;}
+.img-wrap img{width:100%;height:auto;display:block;max-height:520px;object-fit:contain;}
 .img-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 .result-card{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;animation:fadeUp .35s ease both;}
 .result-top{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
@@ -213,30 +213,74 @@ function renderPreviews(){
     </div>`).join('');
 }
 
-function buildSVG(bp,lr,tb){
-  const {left_end:lx,right_start:rx,top_end:ty,bottom_start:by}=bp;
-  const [lp,rp]=(lr||'50/50').split('/').map(Number);
-  const [tp,bp2]=(tb||'50/50').split('/').map(Number);
-  const col='#ff3355',bg='rgba(0,0,0,0.7)',lw=0.45,fs=3.6,px=1.4,py=0.8;
-  const mx=(lx+rx)/2,my=(ty+by)/2;
-  function L(t,x,y){
-    const w=t.length*fs*0.6+px*2,h=fs+py*2;
-    return `<rect x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="0.8" fill="${bg}"/>
+// ── CENTERING OVERLAY ──────────────────────────────────────────────────────
+// Uses card bounds from Claude + standard Pokemon card border ratio
+// to mathematically calculate where the border lines should be drawn.
+// Pokemon card borders are ~6.35% of card width per side (LR), ~4.5% per side (TB).
+// Centering ratio tells us how that total border space is distributed.
+
+function buildSVG(cardBounds, lr, tb) {
+  const cl = cardBounds.left, cr = cardBounds.right;
+  const ct = cardBounds.top,  cb = cardBounds.bottom;
+  const cardW = cr - cl;
+  const cardH = cb - ct;
+
+  const [lPct, rPct] = (lr || '50/50').split('/').map(Number);
+  const [tPct, bPct] = (tb || '50/50').split('/').map(Number);
+
+  // Standard Pokemon card border = ~6.35% of card width each side, ~4.5% height each side
+  // Total LR border space and TB border space (as % of image)
+  const totalLR = cardW * 0.127;
+  const totalTB = cardH * 0.090;
+
+  // Split by centering ratio
+  const leftBW  = totalLR * (lPct / 100);
+  const rightBW = totalLR * (rPct / 100);
+  const topBH   = totalTB * (tPct / 100);
+  const botBH   = totalTB * (bPct / 100);
+
+  // Line positions = inner edge of each border (where border meets artwork)
+  const lx = cl + leftBW;
+  const rx = cr - rightBW;
+  const ty = ct + topBH;
+  const by = cb - botBH;
+
+  const col = '#ff3355';
+  const bg  = 'rgba(0,0,0,0.72)';
+  const lw  = 0.35;
+  const fs  = 3.4;
+  const px  = 1.3, py = 0.7;
+
+  const mx = (lx + rx) / 2;
+  const my = (ty + by) / 2;
+
+  function L(t, x, y) {
+    const w = t.length * fs * 0.6 + px * 2, h = fs + py * 2;
+    return `<rect x="${(x-w/2).toFixed(2)}" y="${(y-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="0.8" fill="${bg}"/>
 <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="${fs}" font-weight="bold" fill="white">${t}</text>`;
   }
+
+  // Also draw outer card edge lines (slightly dimmer) so user can see card boundary
+  const dimCol = 'rgba(255,255,255,0.25)';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-<line x1="${lx}" y1="0" x2="${lx}" y2="100" stroke="${col}" stroke-width="${lw}"/>
-<line x1="${rx}" y1="0" x2="${rx}" y2="100" stroke="${col}" stroke-width="${lw}"/>
-<line x1="0" y1="${ty}" x2="100" y2="${ty}" stroke="${col}" stroke-width="${lw}"/>
-<line x1="0" y1="${by}" x2="100" y2="${by}" stroke="${col}" stroke-width="${lw}"/>
-<circle cx="${lx}" cy="${ty}" r="0.9" fill="${col}"/>
-<circle cx="${rx}" cy="${ty}" r="0.9" fill="${col}"/>
-<circle cx="${lx}" cy="${by}" r="0.9" fill="${col}"/>
-<circle cx="${rx}" cy="${by}" r="0.9" fill="${col}"/>
-${L(lp.toFixed(1)+'%',lx/2,my)}
-${L(rp.toFixed(1)+'%',(rx+100)/2,my)}
-${L(tp.toFixed(1)+'%',mx,ty/2)}
-${L(bp2.toFixed(1)+'%',mx,(by+100)/2)}
+  <!-- card outer edge guides -->
+  <rect x="${cl.toFixed(2)}" y="${ct.toFixed(2)}" width="${cardW.toFixed(2)}" height="${cardH.toFixed(2)}" fill="none" stroke="${dimCol}" stroke-width="0.25"/>
+  <!-- inner border lines -->
+  <line x1="${lx.toFixed(2)}" y1="${ct.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${cb.toFixed(2)}" stroke="${col}" stroke-width="${lw}"/>
+  <line x1="${rx.toFixed(2)}" y1="${ct.toFixed(2)}" x2="${rx.toFixed(2)}" y2="${cb.toFixed(2)}" stroke="${col}" stroke-width="${lw}"/>
+  <line x1="${cl.toFixed(2)}" y1="${ty.toFixed(2)}" x2="${cr.toFixed(2)}" y2="${ty.toFixed(2)}" stroke="${col}" stroke-width="${lw}"/>
+  <line x1="${cl.toFixed(2)}" y1="${by.toFixed(2)}" x2="${cr.toFixed(2)}" y2="${by.toFixed(2)}" stroke="${col}" stroke-width="${lw}"/>
+  <!-- corner dots -->
+  <circle cx="${lx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.8" fill="${col}"/>
+  <circle cx="${rx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.8" fill="${col}"/>
+  <circle cx="${lx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.8" fill="${col}"/>
+  <circle cx="${rx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.8" fill="${col}"/>
+  <!-- percentage labels in each border zone -->
+  ${L(lPct.toFixed(1)+'%', (cl+lx)/2, my)}
+  ${L(rPct.toFixed(1)+'%', (rx+cr)/2, my)}
+  ${L(tPct.toFixed(1)+'%', mx, (ct+ty)/2)}
+  ${L(bPct.toFixed(1)+'%', mx, (by+cb)/2)}
 </svg>`;
 }
 
@@ -281,10 +325,27 @@ async function analyze(){
     '<div class="loading-card"><div class="spinner"></div><div class="loading-text">CLAUDE VISION EXAMINING CARD…</div></div>';
 
   const prompt=`You are a world-class Pokemon card grader. Analyze this PSA 9 card for PSA 10 upgrade potential.
-PSA 10: centering 60/40 or better L/R and T/B, zero corner whitening, no edge nicks, pristine surface.
-For border_positions: estimate as % of full image (0-100) where each card border edge sits. Be precise.
+
+PSA 10 requires: centering 60/40 or better L/R and T/B, zero corner whitening, no edge nicks, pristine surface.
+
+For card_bounds: identify the outer edges of the actual Pokemon card itself (not the PSA slab, not any black background — the physical card) as percentages of the TOTAL IMAGE dimensions (0–100). Be as accurate as possible — for example if the card left edge starts 22% from the image left side, card_bounds.left = 22.
+
 Return ONLY valid JSON:
-{"centering_lr":"54/46","centering_tb":"55/45","centering_grade":"excellent|good|marginal|poor","corner_whitening":"none|trace|minimal|moderate|heavy","edge_condition":"pristine|minimal_wear|moderate_wear|heavy_wear","surface_front":"pristine|minor|moderate|significant","surface_back":"pristine|minor|moderate|significant","upgrade_potential":"excellent|good|marginal|unlikely","confidence":"high|medium|low","primary_flaw":"main issue or none apparent","recommended_action":"crack and resubmit|hold|pass","notes":"3 sentences: centering, corners/edges, overall recommendation","border_positions":{"left_end":12,"right_start":88,"top_end":8,"bottom_start":92}}`;
+{
+  "centering_lr": "54/46",
+  "centering_tb": "55/45",
+  "centering_grade": "excellent|good|marginal|poor",
+  "corner_whitening": "none|trace|minimal|moderate|heavy",
+  "edge_condition": "pristine|minimal_wear|moderate_wear|heavy_wear",
+  "surface_front": "pristine|minor|moderate|significant",
+  "surface_back": "pristine|minor|moderate|significant",
+  "upgrade_potential": "excellent|good|marginal|unlikely",
+  "confidence": "high|medium|low",
+  "primary_flaw": "main issue or none apparent",
+  "recommended_action": "crack and resubmit|hold|pass",
+  "notes": "3 sentences: centering assessment, corners and edges, overall recommendation",
+  "card_bounds": { "left": 22, "right": 78, "top": 12, "bottom": 91 }
+}`;
 
   try{
     const resp=await fetch('/api/analyze',{
@@ -312,14 +373,14 @@ function showResult(a,cert){
   const vTxt=action.includes('crack')?'CRACK &amp; RESUBMIT':action.includes('hold')?'HOLD':action.includes('pass')?'PASS':'INCONCLUSIVE';
   const hasFlaw=a.primary_flaw&&a.primary_flaw.toLowerCase()!=='none apparent';
   const psaUrl=cert?'https://www.psacard.com/cert/'+cert:null;
-  const bp=a.border_positions||{left_end:12,right_start:88,top_end:8,bottom_start:92};
+  const cardBounds=a.card_bounds||{left:25,right:75,top:12,bottom:90};
   const ctrCls=gc(a.centering_grade,['excellent','good'],['marginal']);
   const cCls=gc(a.corner_whitening,['none','trace'],['minimal']);
   const eCls=gc(a.edge_condition,['pristine'],['minimal_wear']);
   const uCls=gc(a.upgrade_potential,['excellent','good'],['marginal']);
 
   const imgBlock=frontSrc
-    ?`<div class="img-wrap"><img src="${frontSrc}" alt="Card front" onerror="this.style.display='none'">${buildSVG(bp,a.centering_lr,a.centering_tb)}</div>`
+    ?`<div class="img-wrap"><img src="${frontSrc}" alt="Card front" onerror="this.style.display='none'">${buildSVG(cardBounds,a.centering_lr,a.centering_tb)}</div>`
     :`<div style="padding:16px;font-size:11px;color:var(--muted);text-align:center;background:var(--card)">Upload the front image to see centering overlay</div>`;
 
   document.getElementById('right-panel').innerHTML=`
