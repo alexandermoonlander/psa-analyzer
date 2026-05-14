@@ -53,7 +53,7 @@ header{padding:18px 28px;border-bottom:1px solid var(--border);background:var(--
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface);min-height:360px;}
 .empty-icon{font-size:40px;}
 .empty-state h3{font-family:var(--syne);font-size:14px;font-weight:700;color:var(--muted);}
-.empty-state p{font-size:11px;color:var(--dim);text-align:center;max-width:240px;line-height:1.7;}
+.empty-state p{font-size:11px;color:var(--dim);text-align:center;max-width:260px;line-height:1.7;}
 .centering-block{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:fadeUp .35s ease both;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .centering-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
@@ -66,7 +66,7 @@ header{padding:18px 28px;border-bottom:1px solid var(--border);background:var(--
 .img-wrap{position:relative;line-height:0;background:#000;}
 .img-wrap img{width:100%;height:auto;display:block;max-height:520px;object-fit:contain;}
 .img-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
-.detect-method{font-size:9px;color:var(--dim);padding:6px 14px;border-top:1px solid var(--border);letter-spacing:.06em;}
+.detect-info{font-size:9px;color:var(--dim);padding:5px 14px;border-top:1px solid var(--border);letter-spacing:.05em;}
 .result-card{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;animation:fadeUp .35s ease both;}
 .result-top{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .verdict-badge{font-family:var(--syne);font-size:10px;font-weight:700;letter-spacing:.14em;padding:5px 12px;border-radius:5px;flex-shrink:0;}
@@ -138,13 +138,11 @@ footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top
         <a id="cert-link" href="#" target="_blank">View on PSA ↗</a>
       </div>
     </div>
-
     <div class="panel-title" style="padding-top:2px">Card Images</div>
     <div class="tabs">
       <button class="tab active" id="tab-url" onclick="setMode('url')">Paste URLs</button>
       <button class="tab" id="tab-upload" onclick="setMode('upload')">Upload Files</button>
     </div>
-
     <div id="url-mode">
       <div class="field" style="margin-bottom:10px">
         <label>FRONT IMAGE URL</label>
@@ -156,7 +154,6 @@ footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top
       </div>
       <div class="hint-text">Go to <a href="https://www.psacard.com/cert" target="_blank">psacard.com/cert</a>, look up the cert, then long-press each image → Copy Image Address</div>
     </div>
-
     <div id="upload-mode" style="display:none">
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
         <div class="icon">📤</div>
@@ -165,7 +162,6 @@ footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top
       <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="onFiles(this.files)">
       <div class="previews" id="previews"></div>
     </div>
-
     <button id="analyze-btn" onclick="analyze()">ANALYZE CARD</button>
   </div>
 
@@ -173,7 +169,7 @@ footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top
     <div class="empty-state">
       <div class="empty-icon">🃏</div>
       <h3>No card analyzed yet</h3>
-      <p>Enter a PSA cert number, add front and back images, and hit Analyze to get your upgrade assessment.</p>
+      <p>Enter a PSA cert number, add front and back images, and hit Analyze. Upload files for precise pixel-based centering measurement.</p>
     </div>
   </div>
 </div>
@@ -181,7 +177,7 @@ footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top
 <footer>PSA GRADE ANALYZER · FOR RESEARCH PURPOSES ONLY · NOT AFFILIATED WITH PSA</footer>
 
 <script>
-let mode='url', uploads=[], frontSrc=null, detectedBounds=null, detectionMethod='';
+let mode='url', uploads=[], frontSrc=null, pixelResult=null;
 
 function setMode(m){
   mode=m;
@@ -198,24 +194,25 @@ function onCertInput(){
 }
 function onDrag(e,over){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',over);}
 function onDrop(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');onFiles(e.dataTransfer.files);}
+
 function onFiles(files){
   Array.from(files).forEach(f=>{
     if(!f.type.startsWith('image/'))return;
-    const img=new Image();
+    const imgEl=new Image();
     const url=URL.createObjectURL(f);
-    img.onload=()=>{
+    imgEl.onload=()=>{
       const MAX=1600;
-      let w=img.width, h=img.height;
-      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
-      const canvas=document.createElement('canvas');
-      canvas.width=w; canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const data=canvas.toDataURL('image/jpeg',0.85);
+      let w=imgEl.width,h=imgEl.height;
+      if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
+      const cv=document.createElement('canvas');
+      cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(imgEl,0,0,w,h);
+      const data=cv.toDataURL('image/jpeg',0.85);
       uploads.push({data,type:'image/jpeg'});
       URL.revokeObjectURL(url);
       renderPreviews();
     };
-    img.src=url;
+    imgEl.src=url;
   });
 }
 function renderPreviews(){
@@ -226,153 +223,228 @@ function renderPreviews(){
     </div>`).join('');
 }
 
-// ── PIXEL-BASED CARD EDGE DETECTION ────────────────────────────────────────
-// Scans image pixels to find card boundaries using brightness transitions.
-// Works like a simplified Canny edge detector — finds where dark background
-// meets the lighter card. Only runs on uploaded images (canvas needs same-origin).
+// ══════════════════════════════════════════════════════════════════════════════
+//  PIXEL-BASED CARD ANALYSIS
+//  Ported from OpenCV approach:
+//  1. Find outer card boundary (brightness threshold scan)
+//  2. Find inner artwork boundary (variance-based: solid border = low variance,
+//     artwork = high variance — same principle as adaptive threshold in cv2)
+//  3. Calculate centering from actual measured border widths
+// ══════════════════════════════════════════════════════════════════════════════
 
-function detectCardBoundsPixel(dataUrl) {
+function analyzeCardPixels(dataUrl) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       const W = img.naturalWidth, H = img.naturalHeight;
-      const canvas = document.createElement('canvas');
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext('2d');
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const ctx = cv.getContext('2d');
       try {
         ctx.drawImage(img, 0, 0);
         const d = ctx.getImageData(0, 0, W, H).data;
 
-        // Brightness at pixel (x,y)
+        // Weighted luminance (perceptual, same as cv2 grayscale)
         const lum = (x, y) => {
-          const i = (Math.round(y) * W + Math.round(x)) * 4;
-          // Weighted luminance (perceptual)
-          return 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+          const i = (Math.round(y)*W + Math.round(x)) * 4;
+          return 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
         };
 
-        // Sample a column/row at N evenly spaced points and return avg brightness
-        const rowAvg = (y, x0, x1, n=30) => {
-          let s=0; for(let i=0;i<n;i++) s+=lum(x0+(x1-x0)*i/n, y); return s/n;
+        // ── Step 1: Find outer card bounds ──
+        // Auto-threshold from corners (background brightness)
+        const cornerBr = (lum(2,2)+lum(W-3,2)+lum(2,H-3)+lum(W-3,H-3)) / 4;
+        const bgThresh = Math.max(25, Math.min(140, cornerBr + 45));
+
+        const colBright = (x, y0f, y1f, n=30) => {
+          let s=0;
+          for(let i=0;i<n;i++) s+=lum(x, H*(y0f + (y1f-y0f)*i/n));
+          return s/n;
         };
-        const colAvg = (x, y0, y1, n=30) => {
-          let s=0; for(let i=0;i<n;i++) s+=lum(x, y0+(y1-y0)*i/n); return s/n;
+        const rowBright = (y, x0f, x1f, n=30) => {
+          let s=0;
+          for(let i=0;i<n;i++) s+=lum(W*(x0f + (x1f-x0f)*i/n), y);
+          return s/n;
         };
 
-        // Auto-threshold: background brightness from corners
-        const cornerBr = (lum(2,2)+lum(W-3,2)+lum(2,H-3)+lum(W-3,H-3))/4;
-        const thresh = Math.max(30, Math.min(120, cornerBr + 35));
+        let oL=W*0.05, oR=W*0.95, oT=H*0.05, oB=H*0.95;
+        for(let x=0;      x<W*0.48; x+=1) if(colBright(x,0.15,0.85)>bgThresh){oL=x;break;}
+        for(let x=W-1;    x>W*0.52; x-=1) if(colBright(x,0.15,0.85)>bgThresh){oR=x;break;}
+        for(let y=0;      y<H*0.48; y+=1) if(rowBright(y,0.15,0.85)>bgThresh){oT=y;break;}
+        for(let y=H-1;    y>H*0.52; y-=1) if(rowBright(y,0.15,0.85)>bgThresh){oB=y;break;}
 
-        // Scan from each edge inward, looking for a row/col whose avg brightness
-        // crosses the threshold (background → card transition)
-        let left=W*0.05, right=W*0.95, top=H*0.05, bottom=H*0.95;
+        const cW = oR-oL, cH = oB-oT;
+        if(cW < W*0.15 || cH < H*0.15) { resolve(null); return; }
 
-        // Left edge (scan rightward columns)
-        for(let x=0; x<W*0.45; x+=2){
-          if(colAvg(x, H*0.15, H*0.85) > thresh){ left=x; break; }
-        }
-        // Right edge
-        for(let x=W-1; x>W*0.55; x-=2){
-          if(colAvg(x, H*0.15, H*0.85) > thresh){ right=x; break; }
-        }
-        // Top edge
-        for(let y=0; y<H*0.45; y+=2){
-          if(rowAvg(y, W*0.15, W*0.85) > thresh){ top=y; break; }
-        }
-        // Bottom edge
-        for(let y=H-1; y>H*0.55; y-=2){
-          if(rowAvg(y, W*0.15, W*0.85) > thresh){ bottom=y; break; }
+        // ── Step 2: Find inner artwork boundary using variance ──
+        // Solid border = low variance (uniform color)
+        // Artwork = high variance (many colors and details)
+        // This mirrors cv2's adaptiveThreshold approach
+
+        const variance = arr => {
+          const m = arr.reduce((a,b)=>a+b) / arr.length;
+          return arr.reduce((s,v)=>s+(v-m)**2, 0) / arr.length;
+        };
+
+        // Scan a column of N pixels; higher variance = artwork detected
+        const colVar = (x, yStart, yEnd, n=35) => {
+          const s = [];
+          for(let i=0;i<n;i++) s.push(lum(x, yStart+(yEnd-yStart)*i/n));
+          return variance(s);
+        };
+        const rowVar = (y, xStart, xEnd, n=35) => {
+          const s = [];
+          for(let i=0;i<n;i++) s.push(lum(xStart+(xEnd-xStart)*i/n, y));
+          return variance(s);
+        };
+
+        // Threshold: below = border (solid), above = artwork (complex)
+        // Use a dynamic threshold: sample the middle of the card to get artwork variance
+        // then scan from edges until we exceed a fraction of that
+        const midVar = colVar(oL+cW*0.5, oT+cH*0.1, oT+cH*0.9);
+        const V_THRESH = Math.max(150, midVar * 0.12);
+
+        // Scan right from left outer edge → find where artwork starts (inner left)
+        let iL = oL + cW*0.04;
+        for(let x=oL+2; x<oL+cW*0.45; x++) {
+          if(colVar(x, oT+cH*0.2, oT+cH*0.8) > V_THRESH) { iL=x; break; }
         }
 
-        // Sanity check — card should be at least 30% of image in each dimension
-        const cW = right-left, cH = bottom-top;
-        if(cW < W*0.3 || cH < H*0.3){
-          resolve(null); return; // detection failed, fall back to Claude
+        // Scan left from right outer edge → find where artwork starts (inner right)
+        let iR = oR - cW*0.04;
+        for(let x=oR-2; x>oL+cW*0.55; x--) {
+          if(colVar(x, oT+cH*0.2, oT+cH*0.8) > V_THRESH) { iR=x; break; }
         }
+
+        // Scan down from top outer edge → find where artwork starts (inner top)
+        let iT = oT + cH*0.03;
+        for(let y=oT+2; y<oT+cH*0.45; y++) {
+          if(rowVar(y, oL+cW*0.15, oL+cW*0.85) > V_THRESH) { iT=y; break; }
+        }
+
+        // Scan up from bottom outer edge → find where artwork starts (inner bottom)
+        let iB = oB - cH*0.03;
+        for(let y=oB-2; y>oT+cH*0.55; y--) {
+          if(rowVar(y, oL+cW*0.15, oL+cW*0.85) > V_THRESH) { iB=y; break; }
+        }
+
+        // ── Step 3: Measure border widths and calculate centering ──
+        const leftBW  = iL - oL;
+        const rightBW = oR - iR;
+        const topBH   = iT - oT;
+        const botBH   = oB - iB;
+        const totalLR = leftBW + rightBW;
+        const totalTB = topBH + botBH;
+
+        // Sanity: each border should be 1–25% of card dimension
+        const minBW = cW*0.01, maxBW = cW*0.30;
+        const minBH = cH*0.01, maxBH = cH*0.30;
+        if(leftBW<minBW||rightBW<minBW||leftBW>maxBW||rightBW>maxBW||
+           topBH<minBH||botBH<minBH||topBH>maxBH||botBH>maxBH) {
+          resolve(null); return;
+        }
+
+        const lPct = leftBW/totalLR*100;
+        const rPct = 100-lPct;
+        const tPct = topBH/totalTB*100;
+        const bPct = 100-tPct;
+
+        const cGrade = (Math.abs(lPct-50)<=10 && Math.abs(tPct-50)<=10) ? 'excellent' :
+                       (Math.abs(lPct-50)<=15 && Math.abs(tPct-50)<=15) ? 'good' :
+                       (Math.abs(lPct-50)<=20 && Math.abs(tPct-50)<=20) ? 'marginal' : 'poor';
 
         resolve({
-          left:   (left  / W) * 100,
-          right:  (right / W) * 100,
-          top:    (top   / H) * 100,
-          bottom: (bottom/ H) * 100,
+          outer: { left:oL/W*100, right:oR/W*100, top:oT/H*100, bottom:oB/H*100 },
+          inner: { left:iL/W*100, right:iR/W*100, top:iT/H*100, bottom:iB/H*100 },
+          centering: {
+            lr: `${lPct.toFixed(1)}/${rPct.toFixed(1)}`,
+            tb: `${tPct.toFixed(1)}/${bPct.toFixed(1)}`,
+            lPct, rPct, tPct, bPct, grade: cGrade
+          }
         });
-      } catch(e) {
-        resolve(null); // CORS or other error
-      }
+      } catch(e) { resolve(null); }
     };
     img.onerror = () => resolve(null);
     img.src = dataUrl;
   });
 }
 
-// ── CENTERING OVERLAY ──────────────────────────────────────────────────────
-// Pokemon card borders: ~6.35% of card width per side (LR), ~4.5% per side (TB)
-// Centering ratio (e.g. 54/46) tells us how that total border space is split.
+// ── SVG OVERLAY ──────────────────────────────────────────────────────────────
+// Lines drawn at the inner border edges (where border meets artwork)
+// Labels shown in each border zone (between outer and inner edge)
 
-function buildSVG(cb, lr, tb, method) {
-  const cl=cb.left, cr=cb.right, ct=cb.top, cbot=cb.bottom;
-  const cardW=cr-cl, cardH=cbot-ct;
+function buildSVG(outer, inner, centering) {
+  const {left:ol, right:or_, top:ot, bottom:ob} = outer;
+  const {left:lx, right:rx, top:ty, bottom:by}  = inner;
+  const {lPct, rPct, tPct, bPct} = centering;
 
-  const [lPct,rPct]=(lr||'50/50').split('/').map(Number);
-  const [tPct,bPct]=(tb||'50/50').split('/').map(Number);
-
-  // Total border space as % of image
-  const totalLR = cardW * 0.127;
-  const totalTB = cardH * 0.090;
-
-  // Split by centering ratio — these are the inner edges of the borders
-  const lx = cl + totalLR*(lPct/100);
-  const rx = cr - totalLR*(rPct/100);
-  const ty = ct + totalTB*(tPct/100);
-  const by = cbot - totalTB*(bPct/100);
-
-  const COL='#ff3355', DIM='rgba(255,255,255,0.2)', BG='rgba(0,0,0,0.72)';
-  const LW=0.35, FS=3.4, PX=1.3, PY=0.7;
+  const COL='#ff3355', DIM='rgba(255,255,255,0.18)', BG='rgba(0,0,0,0.75)';
+  const LW=0.38, FS=3.5, PX=1.4, PY=0.8;
   const mx=(lx+rx)/2, my=(ty+by)/2;
 
   function L(t,x,y){
-    const w=t.length*FS*0.6+PX*2, h=FS+PY*2;
+    const w=t.length*FS*0.62+PX*2, h=FS+PY*2;
     return `<rect x="${(x-w/2).toFixed(2)}" y="${(y-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="0.8" fill="${BG}"/>
-<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="${FS}" font-weight="bold" fill="white">${t}</text>`;
+<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="${FS}" font-weight="bold" fill="white">${t}</text>`;
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-  <rect x="${cl.toFixed(2)}" y="${ct.toFixed(2)}" width="${cardW.toFixed(2)}" height="${cardH.toFixed(2)}" fill="none" stroke="${DIM}" stroke-width="0.2"/>
-  <line x1="${lx.toFixed(2)}" y1="${ct.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${cbot.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
-  <line x1="${rx.toFixed(2)}" y1="${ct.toFixed(2)}" x2="${rx.toFixed(2)}" y2="${cbot.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
-  <line x1="${cl.toFixed(2)}" y1="${ty.toFixed(2)}" x2="${cr.toFixed(2)}" y2="${ty.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
-  <line x1="${cl.toFixed(2)}" y1="${by.toFixed(2)}" x2="${cr.toFixed(2)}" y2="${by.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
-  <circle cx="${lx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.75" fill="${COL}"/>
-  <circle cx="${rx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.75" fill="${COL}"/>
-  <circle cx="${lx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.75" fill="${COL}"/>
-  <circle cx="${rx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.75" fill="${COL}"/>
-  ${L(lPct.toFixed(1)+'%',(cl+lx)/2,my)}
-  ${L(rPct.toFixed(1)+'%',(rx+cr)/2,my)}
-  ${L(tPct.toFixed(1)+'%',mx,(ct+ty)/2)}
-  ${L(bPct.toFixed(1)+'%',mx,(by+cbot)/2)}
+  <rect x="${ol.toFixed(2)}" y="${ot.toFixed(2)}" width="${(or_-ol).toFixed(2)}" height="${(ob-ot).toFixed(2)}" fill="none" stroke="${DIM}" stroke-width="0.2"/>
+  <line x1="${lx.toFixed(2)}" y1="${ot.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${ob.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
+  <line x1="${rx.toFixed(2)}" y1="${ot.toFixed(2)}" x2="${rx.toFixed(2)}" y2="${ob.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
+  <line x1="${ol.toFixed(2)}" y1="${ty.toFixed(2)}" x2="${or_.toFixed(2)}" y2="${ty.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
+  <line x1="${ol.toFixed(2)}" y1="${by.toFixed(2)}" x2="${or_.toFixed(2)}" y2="${by.toFixed(2)}" stroke="${COL}" stroke-width="${LW}"/>
+  <circle cx="${lx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.8" fill="${COL}"/>
+  <circle cx="${rx.toFixed(2)}" cy="${ty.toFixed(2)}" r="0.8" fill="${COL}"/>
+  <circle cx="${lx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.8" fill="${COL}"/>
+  <circle cx="${rx.toFixed(2)}" cy="${by.toFixed(2)}" r="0.8" fill="${COL}"/>
+  ${L(lPct.toFixed(1)+'%', (ol+lx)/2, my)}
+  ${L(rPct.toFixed(1)+'%', (rx+or_)/2, my)}
+  ${L(tPct.toFixed(1)+'%', mx, (ot+ty)/2)}
+  ${L(bPct.toFixed(1)+'%', mx, (by+ob)/2)}
 </svg>`;
 }
 
-function computeScore(a){
+// Fallback SVG using card_bounds from Claude + standard border ratio math
+function buildSVGFallback(cardBounds, lr, tb) {
+  const cl=cardBounds.left, cr=cardBounds.right, ct=cardBounds.top, cbot=cardBounds.bottom;
+  const cardW=cr-cl, cardH=cbot-ct;
+  const [lPct,rPct]=(lr||'50/50').split('/').map(Number);
+  const [tPct,bPct]=(tb||'50/50').split('/').map(Number);
+  const totalLR=cardW*0.127, totalTB=cardH*0.090;
+  const lx=cl+totalLR*(lPct/100), rx=cr-totalLR*(rPct/100);
+  const ty=ct+totalTB*(tPct/100), by=cbot-totalTB*(bPct/100);
+  const outer={left:cl,right:cr,top:ct,bottom:cbot};
+  const inner={left:lx,right:rx,top:ty,bottom:by};
+  return buildSVG(outer, inner, {lPct,rPct,tPct,bPct});
+}
+
+// ── SCORING ────────────────────────────────────────────────────────────────
+
+function computeScore(a, pixelCentering){
   let s=50;
-  s+=({excellent:35,good:15,marginal:-10,unlikely:-35}[a.upgrade_potential]||0);
-  s+=({excellent:15,good:8,marginal:-5,poor:-20}[a.centering_grade]||0);
+  const lr = pixelCentering || a.centering_grade;
+  const grade = pixelCentering
+    ? pixelCentering.grade
+    : (a.centering_grade||'marginal');
+  s+=({excellent:35,good:15,marginal:-10,poor:-25,unlikely:-35}[grade]||0);
   s+=({none:15,trace:10,minimal:4,moderate:-15,heavy:-35}[a.corner_whitening]||0);
   s+=({pristine:10,minimal_wear:3,moderate_wear:-12,heavy_wear:-25}[a.edge_condition]||0);
   s+=({pristine:5,minor:0,moderate:-10,significant:-20}[a.surface_front]||0);
   s+=({pristine:5,minor:0,moderate:-10,significant:-20}[a.surface_back]||0);
+  s+=({excellent:15,good:8,marginal:-5,poor:-20}[a.upgrade_potential]||0);
   s+=({high:0,medium:-5,low:-12}[a.confidence]||0);
   return Math.max(0,Math.min(100,s));
 }
 function gc(v,g,w){return g.includes(v)?'good':w.includes(v)?'warn':'bad';}
-function cbCls(lr){
-  const l=parseFloat((lr||'50/50').split('/')[0]);
-  return l>=40&&l<=60?'cb-good':l>=37&&l<=63?'cb-warn':'cb-bad';
-}
+function cbCls(pct){return pct>=40&&pct<=60?'cb-good':pct>=37&&pct<=63?'cb-warn':'cb-bad';}
+function cbClsStr(lr){const l=parseFloat((lr||'50/50').split('/')[0]);return cbCls(l);}
+
+// ── ANALYZE ────────────────────────────────────────────────────────────────
 
 async function analyze(){
   const cert=document.getElementById('cert').value.trim();
   const btn=document.getElementById('analyze-btn');
-  frontSrc=null; detectedBounds=null; detectionMethod='';
+  frontSrc=null; pixelResult=null;
   let imgs=[];
 
   if(mode==='url'){
@@ -384,101 +456,105 @@ async function analyze(){
   }else{
     if(!uploads.length){showError('Please upload at least one image.');return;}
     frontSrc=uploads[0].data;
-
-    // Try pixel-based detection first (uploaded images are same-origin)
-    const pixelBounds = await detectCardBoundsPixel(uploads[0].data);
-    if(pixelBounds){
-      detectedBounds = pixelBounds;
-      detectionMethod = 'pixel edge detection';
-    }
-
     for(const u of uploads.slice(0,3))
       imgs.push({type:'image',source:{type:'base64',media_type:u.type,data:u.data.split(',')[1]}});
   }
 
-  btn.disabled=true;btn.textContent='ANALYZING…';
+  btn.disabled=true; btn.textContent='ANALYZING…';
   document.getElementById('right-panel').innerHTML=
-    '<div class="loading-card"><div class="spinner"></div><div class="loading-text">CLAUDE VISION EXAMINING CARD…</div></div>';
+    '<div class="loading-card"><div class="spinner"></div><div class="loading-text">EXAMINING CARD…</div></div>';
 
-  // Always ask Claude for grading + card_bounds (used as fallback if pixel detection failed)
-  const prompt=`You are a world-class Pokemon card grader. Analyze this PSA 9 card for PSA 10 upgrade potential.
+  // Run pixel analysis in parallel with Claude call for uploaded images
+  const pixelPromise = (mode==='upload' && uploads.length)
+    ? analyzeCardPixels(uploads[0].data)
+    : Promise.resolve(null);
 
-PSA 10 requires: centering 60/40 or better L/R and T/B, zero corner whitening, no edge nicks, pristine surface.
-
-For card_bounds: find the outer edges of the physical Pokemon card (not the PSA slab housing, not the background — the actual card edges including its white borders) as percentages of the TOTAL image size (0–100). Example: if the card left edge is 22% from the image left, card_bounds.left = 22.
-
+  // Claude prompt — for uploads we have pixel centering so just ask for quality grades
+  const prompt = mode==='upload'
+    ? `You are a world-class Pokemon card grader. Assess the condition of this PSA 9 card.
+Do NOT estimate centering — that is measured separately.
+Assess only: corner whitening, edge condition, surface quality, and overall upgrade potential.
 Return ONLY valid JSON:
-{
-  "centering_lr": "54/46",
-  "centering_tb": "55/45",
-  "centering_grade": "excellent|good|marginal|poor",
-  "corner_whitening": "none|trace|minimal|moderate|heavy",
-  "edge_condition": "pristine|minimal_wear|moderate_wear|heavy_wear",
-  "surface_front": "pristine|minor|moderate|significant",
-  "surface_back": "pristine|minor|moderate|significant",
-  "upgrade_potential": "excellent|good|marginal|unlikely",
-  "confidence": "high|medium|low",
-  "primary_flaw": "main issue or none apparent",
-  "recommended_action": "crack and resubmit|hold|pass",
-  "notes": "3 sentences: centering, corners/edges, overall recommendation",
-  "card_bounds": { "left": 22, "right": 78, "top": 12, "bottom": 91 }
-}`;
+{"corner_whitening":"none|trace|minimal|moderate|heavy","edge_condition":"pristine|minimal_wear|moderate_wear|heavy_wear","surface_front":"pristine|minor|moderate|significant","surface_back":"pristine|minor|moderate|significant","upgrade_potential":"excellent|good|marginal|unlikely","confidence":"high|medium|low","primary_flaw":"main issue or none apparent","recommended_action":"crack and resubmit|hold|pass","notes":"2-3 sentences on corners, edges, surface quality","card_bounds":{"left":22,"right":78,"top":12,"bottom":91}}`
+    : `You are a world-class Pokemon card grader. Analyze this PSA 9 card for PSA 10 upgrade potential.
+PSA 10 requires: centering 60/40 or better L/R and T/B, zero corner whitening, no edge nicks, pristine surface.
+For card_bounds: identify the outer edges of the physical Pokemon card as % of total image (0–100).
+Return ONLY valid JSON:
+{"centering_lr":"54/46","centering_tb":"55/45","centering_grade":"excellent|good|marginal|poor","corner_whitening":"none|trace|minimal|moderate|heavy","edge_condition":"pristine|minimal_wear|moderate_wear|heavy_wear","surface_front":"pristine|minor|moderate|significant","surface_back":"pristine|minor|moderate|significant","upgrade_potential":"excellent|good|marginal|unlikely","confidence":"high|medium|low","primary_flaw":"main issue or none apparent","recommended_action":"crack and resubmit|hold|pass","notes":"3 sentences: centering, corners/edges, overall recommendation","card_bounds":{"left":22,"right":78,"top":12,"bottom":91}}`;
 
   try{
-    const resp=await fetch('/api/analyze',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user',content:[...imgs,{type:'text',text:prompt}]}]
-      })
-    });
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.error?.message||'API error '+resp.status);
-    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
-    const s=raw.indexOf('{'),e=raw.lastIndexOf('}')+1;
-    const result=JSON.parse(raw.slice(s,e));
+    const [claudeResp, px] = await Promise.all([
+      fetch('/api/analyze',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:800,
+          messages:[{role:'user',content:[...imgs,{type:'text',text:prompt}]}]
+        })
+      }),
+      pixelPromise
+    ]);
 
-    // Use pixel detection if available, otherwise fall back to Claude's estimate
-    if(!detectedBounds && result.card_bounds){
-      detectedBounds = result.card_bounds;
-      detectionMethod = 'Claude Vision estimate';
-    } else if(!detectedBounds){
-      detectedBounds = {left:25,right:75,top:12,bottom:90};
-      detectionMethod = 'default fallback';
-    }
+    const data = await claudeResp.json();
+    if(!claudeResp.ok) throw new Error(data.error?.message||'API error '+claudeResp.status);
+    const raw = data.content[0].text.replace(/```json|```/g,'').trim();
+    const s=raw.indexOf('{'), e=raw.lastIndexOf('}')+1;
+    const a = JSON.parse(raw.slice(s,e));
 
-    showResult(result, cert);
+    pixelResult = px;
+    showResult(a, cert);
   }catch(err){showError(err.message);}
-  finally{btn.disabled=false;btn.textContent='ANALYZE CARD';}
+  finally{btn.disabled=false; btn.textContent='ANALYZE CARD';}
 }
 
-function showResult(a,cert){
-  const score=computeScore(a),sc=score>=65?'hi':score>=40?'mid':'lo';
-  const action=(a.recommended_action||'').toLowerCase();
-  const vCls=action.includes('crack')?'verdict-crack':action.includes('hold')?'verdict-hold':action.includes('pass')?'verdict-pass':'verdict-none';
-  const vTxt=action.includes('crack')?'CRACK &amp; RESUBMIT':action.includes('hold')?'HOLD':action.includes('pass')?'PASS':'INCONCLUSIVE';
-  const hasFlaw=a.primary_flaw&&a.primary_flaw.toLowerCase()!=='none apparent';
-  const psaUrl=cert?'https://www.psacard.com/cert/'+cert:null;
-  const bounds=detectedBounds||{left:25,right:75,top:12,bottom:90};
-  const ctrCls=gc(a.centering_grade,['excellent','good'],['marginal']);
-  const cCls=gc(a.corner_whitening,['none','trace'],['minimal']);
-  const eCls=gc(a.edge_condition,['pristine'],['minimal_wear']);
-  const uCls=gc(a.upgrade_potential,['excellent','good'],['marginal']);
+// ── SHOW RESULT ────────────────────────────────────────────────────────────
 
-  const imgBlock=frontSrc
-    ?`<div class="img-wrap"><img src="${frontSrc}" alt="Card front">${buildSVG(bounds,a.centering_lr,a.centering_tb,detectionMethod)}</div>
-       <div class="detect-method">Border detection: ${detectionMethod}</div>`
-    :`<div style="padding:16px;font-size:11px;color:var(--muted);text-align:center;background:var(--card)">Upload the front image to see centering overlay</div>`;
+function showResult(a, cert){
+  const px = pixelResult;
+
+  // Use pixel centering if available, otherwise Claude's
+  const lrStr  = px ? px.centering.lr : (a.centering_lr||'?');
+  const tbStr  = px ? px.centering.tb : (a.centering_tb||'?');
+  const lrL    = px ? px.centering.lPct : parseFloat((a.centering_lr||'50/50').split('/')[0]);
+  const tbL    = px ? px.centering.tPct : parseFloat((a.centering_tb||'50/50').split('/')[0]);
+  const cGrade = px ? px.centering.grade : (a.centering_grade||'marginal');
+  const detectNote = px ? 'pixel edge detection (accurate)' : 'Claude Vision estimate';
+
+  const score = computeScore(a, px ? px.centering : null);
+  const sc    = score>=65?'hi':score>=40?'mid':'lo';
+  const action= (a.recommended_action||'').toLowerCase();
+  const vCls  = action.includes('crack')?'verdict-crack':action.includes('hold')?'verdict-hold':action.includes('pass')?'verdict-pass':'verdict-none';
+  const vTxt  = action.includes('crack')?'CRACK &amp; RESUBMIT':action.includes('hold')?'HOLD':action.includes('pass')?'PASS':'INCONCLUSIVE';
+  const hasFlaw = a.primary_flaw && a.primary_flaw.toLowerCase()!=='none apparent';
+  const psaUrl  = cert?'https://www.psacard.com/cert/'+cert:null;
+  const ctrCls  = gc(cGrade,['excellent','good'],['marginal']);
+  const cCls    = gc(a.corner_whitening,['none','trace'],['minimal']);
+  const eCls    = gc(a.edge_condition,['pristine'],['minimal_wear']);
+  const uCls    = gc(a.upgrade_potential,['excellent','good'],['marginal']);
+
+  // Build SVG overlay
+  let svgHtml = '';
+  if(frontSrc){
+    if(px){
+      svgHtml = buildSVG(px.outer, px.inner, px.centering);
+    } else if(a.card_bounds){
+      svgHtml = buildSVGFallback(a.card_bounds, a.centering_lr, a.centering_tb);
+    }
+  }
+
+  const imgBlock = frontSrc
+    ? `<div class="img-wrap"><img src="${frontSrc}" alt="Card front">${svgHtml}</div>
+       <div class="detect-info">Centering method: ${detectNote}</div>`
+    : `<div style="padding:16px;font-size:11px;color:var(--muted);text-align:center;background:var(--card)">Upload the front image to see centering overlay</div>`;
 
   document.getElementById('right-panel').innerHTML=`
     <div class="centering-block">
       <div class="centering-header">
         <div class="centering-title">CENTERING ANALYSIS</div>
         <div class="centering-badges">
-          <span class="cb ${cbCls(a.centering_lr)}">L/R ${a.centering_lr||'?'}</span>
-          <span class="cb ${cbCls(a.centering_tb)}">T/B ${a.centering_tb||'?'}</span>
+          <span class="cb ${cbCls(lrL)}">L/R ${lrStr}</span>
+          <span class="cb ${cbCls(tbL)}">T/B ${tbStr}</span>
         </div>
       </div>
       ${imgBlock}
@@ -496,8 +572,8 @@ function showResult(a,cert){
       </div>
       <div class="result-body">
         <div class="metrics-grid">
-          <div class="metric"><div class="metric-label">CENTERING L/R</div><div class="metric-val ${ctrCls}">${a.centering_lr||'—'}</div></div>
-          <div class="metric"><div class="metric-label">CENTERING T/B</div><div class="metric-val ${ctrCls}">${a.centering_tb||'—'}</div></div>
+          <div class="metric"><div class="metric-label">CENTERING L/R</div><div class="metric-val ${ctrCls}">${lrStr}</div></div>
+          <div class="metric"><div class="metric-label">CENTERING T/B</div><div class="metric-val ${ctrCls}">${tbStr}</div></div>
           <div class="metric"><div class="metric-label">CORNERS</div><div class="metric-val ${cCls}">${a.corner_whitening||'—'}</div></div>
           <div class="metric"><div class="metric-label">EDGES</div><div class="metric-val ${eCls}">${a.edge_condition||'—'}</div></div>
         </div>
@@ -519,9 +595,9 @@ function showResult(a,cert){
 }
 
 function resetUI(){
-  uploads=[];frontSrc=null;detectedBounds=null;detectionMethod='';
+  uploads=[];frontSrc=null;pixelResult=null;
   document.getElementById('right-panel').innerHTML=
-    '<div class="empty-state"><div class="empty-icon">🃏</div><h3>No card analyzed yet</h3><p>Add images and hit Analyze.</p></div>';
+    '<div class="empty-state"><div class="empty-icon">🃏</div><h3>No card analyzed yet</h3><p>Upload the front image for precise pixel-based centering, or paste a URL for Claude Vision analysis.</p></div>';
 }
 function showError(msg){
   document.getElementById('right-panel').innerHTML='<div class="error-card">⚠ '+msg+'</div>';
